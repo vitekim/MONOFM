@@ -15,6 +15,9 @@
 #define TEST_BYTE 0x0A
 #define NUMBER_OF_MESSAGE_BYTES 2
 
+#define CC_PITCH 102
+
+byte notes = 0;
 
 unsigned char midiSound;
 
@@ -22,26 +25,31 @@ unsigned char midiSound;
 #define NUMBER_OF_SYSEX_BYTES 14
 unsigned char sysExArray[NUMBER_OF_SYSEX_BYTES];
 
+byte noteValueMap(byte note) {
+ return note; 
+}
+
 void HandleNoteOn(byte channel, byte note, byte velocity) { 
   if(channel==inputChannel){
     if (velocity == 0) {
       HandleNoteOff(channel,note,velocity);
     }
     else{
-      lastSound=sound;
-      sound=note%8;
+      notes++;
       midiSound=sound;
-      if(sound!=lastSound) storeSound(lastSound), loadSound(sound),setTables(sound), hw.freezeAllKnobs();
-      for(int i=0;i<3;i++) hw.setSwitch(i,bitRead(note%8,i));
+      HandleControlChange(channel, CC_PITCH, noteValueMap(note));
     }
   }
 }
 
 void HandleNoteOff(byte channel, byte note, byte velocity){
 
-  unsigned char voice=note%3;
-  unsigned char _sound=note%6;
+  //unsigned char voice=note%3;
+  //unsigned char _sound=note%6;
   if(channel==inputChannel){
+    notes--;
+    if (notes == 0)
+      HandleControlChange(channel, CC_PITCH, 0);
     //if(currentSound[voice]==_sound) ;
   }
 }
@@ -77,7 +85,13 @@ void HandleControlChange(byte channel, byte number, byte value){
 
 
 void HandleProgramChange(byte channel, byte number  ){
-  // implement preset change
+  if(channel==inputChannel){
+    lastSound=sound;
+    sound=number%8;
+    midiSound=sound;
+    if(sound!=lastSound) storeSound(lastSound), loadSound(sound),setTables(sound), hw.freezeAllKnobs();
+    for(int i=0;i<3;i++) hw.setSwitch(i,bitRead(number%8,i));    
+  }
 }
 
 void HandlePitchBend(byte channel, int bend){
